@@ -46,6 +46,57 @@ cp .env.example .env
 # 编辑 .env 文件, 配置API密钥
 ```
 
+## 环境要求
+
+### 操作系统
+
+- **Linux**: 完全支持
+- **macOS**: 完全支持
+- **Windows**: 完全支持 (原生或 WSL)
+- **WSL2**: 需要额外配置 (见下方说明)
+
+### WSL2 用户注意
+
+在 WSL2 中运行需要配置 X Server 支持 GUI 应用:
+
+1. **Windows 11 (推荐)**: 使用内置 WSLg
+```bash
+wsl --update
+wsl --shutdown
+# 重新启动WSL后直接使用
+```
+
+2. **Windows 10**: 使用 VcXsrv 或 X410
+
+详细配置指南请参考: [WSL2_GUI_SETUP.md](WSL2_GUI_SETUP.md)
+
+## 日志配置
+
+genui 内置完整的日志系统, 方便调试和问题排查.
+
+### 配置日志级别
+
+通过环境变量控制日志输出级别:
+
+```bash
+# 在 .env 文件中添加
+GENUI_LOG_LEVEL=DEBUG  # DEBUG, INFO, WARNING, ERROR
+
+# 或者在命令行中临时设置
+export GENUI_LOG_LEVEL=DEBUG
+uv run python -m genui "测试界面"
+```
+
+### 日志输出示例
+
+```
+[2025-01-21 10:30:15] genui.__main__ - INFO - genui程序启动
+[2025-01-21 10:30:15] genui.generator.llm_client - INFO - 初始化LLM客户端, provider=openai
+[2025-01-21 10:30:15] genui.generator.llm_client - INFO - 使用默认OpenAI API
+[2025-01-21 10:30:15] genui.generator.llm_client - INFO - 使用模型: gpt-4o
+[2025-01-21 10:30:20] genui.generator.llm_client - INFO - 成功生成UI配置, 长度: 1234
+```
+
 ## API配置
 
 ### 方式1: 使用OpenAI API (默认, 推荐)
@@ -292,6 +343,47 @@ A: 编辑 `.env` 文件, 修改 `LLM_PROVIDER`, `OPENAI_BASE_URL` 和 `OPENAI_MO
 ### Q: 是否支持本地大模型?
 
 A: 当前不支持, 但只要本地模型提供OpenAI兼容接口(如Ollama), 理论上可以通过配置 `OPENAI_BASE_URL` 使用.
+
+### Q: WSL2 中运行出现 XCB 错误?
+
+**A**: 这是因为 WSL2 需要 X Server 支持 GUI:
+
+1. **Windows 11**: 使用 WSLg (内置)
+   ```bash
+   wsl --update
+   wsl --shutdown
+   ```
+
+2. **Windows 10**: 安装 VcXsrv
+   ```bash
+   # 配置环境变量
+   export DISPLAY=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}'):0
+   ```
+
+详细说明: [WSL2_GUI_SETUP.md](WSL2_GUI_SETUP.md)
+
+### Q: 如何查看详细的日志信息?
+
+**A**: 设置日志级别为 DEBUG:
+
+```bash
+export GENUI_LOG_LEVEL=DEBUG
+uv run python -m genui "你的描述"
+```
+
+日志会显示:
+- LLM 初始化信息
+- API 调用详情
+- UI 生成过程
+- 错误堆栈信息
+
+### Q: 日志输出太多, 如何关闭?
+
+**A**: 设置更高的日志级别:
+
+```bash
+export GENUI_LOG_LEVEL=ERROR  # 只显示错误
+```
 
 ## 许可证
 
