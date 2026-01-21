@@ -8,7 +8,9 @@ genui 是一个探索性项目, 使用大模型根据用户描述动态生成可
 
 ## 特性
 
-- 🤖 **AI驱动**: 使用Claude大模型理解用户需求并生成UI配置
+- 🤖 **AI驱动**: 使用大模型理解用户需求并生成UI配置
+- 🌐 **多API支持**: 优先支持OpenAI兼容API, 兼容国内各大模型服务商(DeepSeek, 通义千问, GLM等)
+- 🔄 **灵活切换**: 支持OpenAI和Anthropic两种API, 可自由切换
 - 🎨 **动态生成**: 每次根据描述生成不同的界面, 而非静态模板
 - 🔌 **可扩展**: 通过适配器模式支持多种UI框架(当前支持Tkinter)
 - 📦 **组件化**: 提供多种抽象UI组件(按钮, 输入框, 标签, 容器等)
@@ -31,14 +33,66 @@ cd genui
 
 2. 安装依赖:
 ```bash
-uv sync --all-extras
+# 安装基础依赖(包含OpenAI支持)
+uv sync
+
+# 如果需要使用Anthropic Claude, 额外安装:
+uv sync --extra anthropic
 ```
 
 3. 配置环境变量:
 ```bash
 cp .env.example .env
-# 编辑 .env 文件, 添加你的 ANTHROPIC_API_KEY
+# 编辑 .env 文件, 配置API密钥
 ```
+
+## API配置
+
+### 方式1: 使用OpenAI API (默认, 推荐)
+
+编辑 `.env` 文件:
+
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4o  # 可选, 默认为gpt-4o
+```
+
+### 方式2: 使用兼容OpenAI的国内API
+
+**DeepSeek (推荐, 性价比高)**:
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-deepseek-api-key
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_MODEL=deepseek-chat
+```
+
+**阿里云通义千问**:
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-aliyun-api-key
+OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+OPENAI_MODEL=qwen-max
+```
+
+**智谱GLM**:
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-zhipu-api-key
+OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+OPENAI_MODEL=glm-4
+```
+
+### 方式3: 使用Anthropic Claude
+
+```bash
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your-anthropic-api-key
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022  # 可选
+```
+
+注意: 使用Anthropic需要先安装额外依赖 `uv sync --extra anthropic`
 
 ## 快速开始
 
@@ -82,7 +136,7 @@ genui 采用三层架构:
 ```
 ┌─────────────────────────────────────┐
 │       生成逻辑层 (Generator)        │
-│  - LLM客户端 (Claude API)           │
+│  - LLM客户端 (支持多API)            │
 │  - UI生成器 (Prompt Engineering)    │
 └─────────────────┬───────────────────┘
                   │
@@ -104,7 +158,8 @@ genui 采用三层架构:
 
 ### 1. 生成逻辑层
 
-- 由大模型驱动 (Claude API)
+- 由大模型驱动 (支持OpenAI和Anthropic API)
+- 优先支持OpenAI兼容API, 可使用国内各大模型服务
 - 根据用户输入, 预设的UI组件抽象生成UI实例
 - 包含事件处理逻辑
 
@@ -193,12 +248,26 @@ renderer = Renderer()
 renderer.render(ui_instance)
 ```
 
+## 支持的大模型服务
+
+genui 通过OpenAI兼容接口支持多种大模型服务:
+
+| 服务商 | 模型 | 配置示例 |
+|--------|------|----------|
+| OpenAI | GPT-4o, GPT-4 | 见上方配置说明 |
+| DeepSeek | deepseek-chat | 见上方配置说明 |
+| 阿里云 | qwen-max, qwen-plus | 见上方配置说明 |
+| 智谱AI | glm-4, glm-3-turbo | 见上方配置说明 |
+| Anthropic | Claude 3.5 Sonnet | 需额外安装依赖 |
+
+更多兼容OpenAI接口的服务商请参考 `.env.example` 文件.
+
 ## 限制
 
 - 这是一个探索性项目, 主要用于验证概念
 - 当前只支持Tkinter框架
 - 生成的事件处理函数功能有限
-- 依赖Claude API, 需要网络连接
+- 需要网络连接调用大模型API
 
 ## 未来计划
 
@@ -208,6 +277,21 @@ renderer.render(ui_instance)
 - [ ] 支持自定义组件
 - [ ] 优化生成质量和速度
 - [ ] 添加UI预览和编辑功能
+- [ ] 支持本地大模型
+
+## 常见问题
+
+### Q: 推荐使用哪个API?
+
+A: 如果在国内使用, 推荐DeepSeek, 性价比高且速度快. 如果对质量要求高, 推荐OpenAI GPT-4o或Anthropic Claude.
+
+### Q: 如何切换不同的大模型?
+
+A: 编辑 `.env` 文件, 修改 `LLM_PROVIDER`, `OPENAI_BASE_URL` 和 `OPENAI_MODEL` 等配置即可.
+
+### Q: 是否支持本地大模型?
+
+A: 当前不支持, 但只要本地模型提供OpenAI兼容接口(如Ollama), 理论上可以通过配置 `OPENAI_BASE_URL` 使用.
 
 ## 许可证
 
@@ -220,6 +304,7 @@ MIT License
 ## 致谢
 
 本项目使用以下技术:
-- [Anthropic Claude](https://www.anthropic.com/) - 大模型API
+- [OpenAI API](https://openai.com/) - 大模型API
+- [Anthropic Claude](https://www.anthropic.com/) - Claude大模型
 - [Pydantic](https://pydantic.dev/) - 数据验证
 - [uv](https://github.com/astral-sh/uv) - Python包管理
