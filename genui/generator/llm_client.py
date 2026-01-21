@@ -32,8 +32,6 @@ class LLMClient:
         
         if self.provider == "openai":
             self._init_openai(api_key, base_url, model)
-        elif self.provider == "anthropic":
-            self._init_anthropic(api_key, model)
         else:
             raise ValueError(f"不支持的provider: {self.provider}, 仅支持'openai'或'anthropic'")
 
@@ -64,29 +62,6 @@ class LLMClient:
         
         # 设置默认模型
         self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o")
-
-    def _init_anthropic(
-        self,
-        api_key: Optional[str],
-        model: Optional[str]
-    ) -> None:
-        """初始化Anthropic客户端"""
-        try:
-            from anthropic import Anthropic
-        except ImportError:
-            raise ImportError(
-                "使用Anthropic需要安装anthropic库, "
-                "请运行: uv sync --extra anthropic"
-            )
-        
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            raise ValueError(
-                "未找到ANTHROPIC_API_KEY, 请设置环境变量或传入api_key参数"
-            )
-
-        self.client = Anthropic(api_key=self.api_key)
-        self.model = model or os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 
     def generate_ui_config_sync(
         self,
