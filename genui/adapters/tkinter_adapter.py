@@ -25,6 +25,7 @@ class TkinterAdapter(AdapterBase):
     def __init__(self):
         """初始化适配器"""
         self.component_widgets: Dict[str, Any] = {}  # 组件ID到widget的映射
+        self.component_variables: Dict[str, Any] = {}  # 组件ID到变量的映射(用于Checkbox、RadioGroup、Dropdown)
         self.logger = get_logger_with_date_file("genui.tkinter")
         self.logger.info("TkinterAdapter初始化完成")
 
@@ -178,6 +179,9 @@ class TkinterAdapter(AdapterBase):
     ) -> tk.Checkbutton:
         """渲染复选框"""
         var = tk.BooleanVar(value=component.checked)
+        # 保存变量以便后续访问
+        self.component_variables[component.id] = var
+
         cmd = None
         if component.on_change and component.on_change in event_handlers:
             cmd = event_handlers[component.on_change]
@@ -200,6 +204,8 @@ class TkinterAdapter(AdapterBase):
         """渲染单选按钮组"""
         frame = tk.LabelFrame(parent, text=component.label)
         var = tk.StringVar(value=component.selected or "")
+        # 保存变量以便后续访问
+        self.component_variables[component.id] = var
 
         cmd = None
         if component.on_change and component.on_change in event_handlers:
@@ -224,6 +230,9 @@ class TkinterAdapter(AdapterBase):
     ) -> ttk.Combobox:
         """渲染下拉选择框"""
         var = tk.StringVar(value=component.selected or "")
+        # 保存变量以便后续访问
+        self.component_variables[component.id] = var
+
         dropdown = ttk.Combobox(
             parent,
             textvariable=var,
@@ -286,12 +295,83 @@ class TkinterAdapter(AdapterBase):
             """根据组件ID获取widget"""
             return self.get_widget_by_id(component_id)
 
-        # 创建全局执行环境, 提供必要的工具函数
+        def update_widget(component_id: str, **kwargs) -> None:
+            """更新widget属性的便捷函数"""
+            widget = self.get_widget_by_id(component_id)
+            if widget:
+                widget.config(**kwargs)
+
+        def get_value(component_id: str) -> Any:
+            """获取widget值的便捷函数"""
+            # 优先检查是否有保存的变量（Checkbox、RadioGroup、Dropdown）
+            if component_id in self.component_variables:
+                var = self.component_variables[component_id]
+                return var.get()
+
+            # 如果没有变量，检查widget
+            widget = self.get_widget_by_id(component_id)
+            if widget:
+                # 根据widget类型获取值
+                if isinstance(widget, tk.Text):
+                    # Text组件需要指定范围
+                    return widget.get("1.0", "end-1c")
+                elif isinstance(widget, (tk.Entry, ttk.Combobox)):
+                    # Entry和Combobox使用无参数get()
+                    return widget.get()
+                elif isinstance(widget, tk.Label):
+                    # Label获取text属性
+                    return widget.cget('text')
+                elif hasattr(widget, 'get'):
+                    # 其他有get方法的widget
+                    try:
+                        return widget.get()
+                    except TypeError:
+                        # 如果get()需要参数，返回None
+                        return None
+            return None
+
+        def set_value(component_id: str, value: Any) -> None:
+            """设置widget值的便捷函数"""
+            # 优先检查是否有保存的变量（Checkbox、RadioGroup、Dropdown）
+            if component_id in self.component_variables:
+                var = self.component_variables[component_id]
+                var.set(value)
+                return
+
+            # 如果没有变量，检查widget
+            widget = self.get_widget_by_id(component_id)
+            if widget:
+                if isinstance(widget, tk.Entry):
+                    widget.delete(0, tk.END)
+                    widget.insert(0, str(value))
+                elif isinstance(widget, tk.Text):
+                    widget.delete("1.0", tk.END)
+                    widget.insert("1.0", str(value))
+                elif isinstance(widget, tk.Label):
+                    widget.config(text=str(value))
+
+        # 创建全局执行环境, 提供必要的工具函数和常量
         global_env = {
             "__builtins__": __builtins__,
+            # 工具函数
             "display": display,
             "get_widget": get_widget,
+            "update_widget": update_widget,
+            "get_value": get_value,
+            "set_value": set_value,
             "print": print,
+            # Tkinter常用常量
+            "tk": tk,
+            "END": tk.END,
+            "NORMAL": tk.NORMAL,
+            "DISABLED": tk.DISABLED,
+            # 常用模块
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "len": len,
+            "range": range,
         }
 
         self.logger.info(f"开始编译 {len(handler_codes)} 个事件处理函数")
