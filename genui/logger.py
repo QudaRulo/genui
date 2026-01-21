@@ -5,6 +5,7 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional
+import colorlog
 
 
 def setup_logger(
@@ -29,16 +30,29 @@ def setup_logger(
     if logger.handlers:
         return logger
 
-    # 创建格式化器
-    formatter = logging.Formatter(
+    # 创建彩色格式化器(控制台用)
+    color_formatter = colorlog.ColoredFormatter(
+        '%(log_color)s[%(asctime)s] %(name)s - %(levelname)s - %(message)s%(reset)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        log_colors={
+            'DEBUG': 'cyan',
+            'INFO': 'green',
+            'WARNING': 'yellow',
+            'ERROR': 'red',
+            'CRITICAL': 'red,bg_white',
+        }
+    )
+
+    # 创建标准格式化器(文件用)
+    file_formatter = logging.Formatter(
         '[%(asctime)s] %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    # 控制台handler
+    # 控制台handler (使用彩色格式)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(level)
-    console_handler.setFormatter(formatter)
+    console_handler.setFormatter(color_formatter)
     logger.addHandler(console_handler)
 
     # 文件handler (如果指定)
@@ -46,10 +60,10 @@ def setup_logger(
         # 确保日志目录存在
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(level)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
     return logger

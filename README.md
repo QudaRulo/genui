@@ -12,9 +12,11 @@ genui 是一个探索性项目, 使用大模型根据用户描述动态生成可
 - 🌐 **多API支持**: 优先支持OpenAI兼容API, 兼容国内各大模型服务商(DeepSeek, 通义千问, GLM等)
 - 🔄 **灵活切换**: 支持OpenAI和Anthropic两种API, 可自由切换
 - 🎨 **动态生成**: 每次根据描述生成不同的界面, 而非静态模板
-- 🔌 **可扩展**: 通过适配器模式支持多种UI框架(当前支持Tkinter)
+- 🔌 **可扩展**: 通过适配器模式支持多种UI框架(Tkinter, ASCII终端)
 - 📦 **组件化**: 提供多种抽象UI组件(按钮, 输入框, 标签, 容器等)
 - 🧪 **类型安全**: 使用Pydantic进行数据验证和类型注解
+- 🖥️ **双模式渲染**: 支持Tkinter图形界面和ASCII终端界面两种模式
+- 🎨 **彩色日志**: 使用colorlog提供清晰易读的彩色日志输出
 
 ## 安装
 
@@ -57,7 +59,14 @@ cp .env.example .env
 
 ### WSL2 用户注意
 
-在 WSL2 中运行需要配置 X Server 支持 GUI 应用:
+在 WSL2 中运行GUI需要配置 X Server 支持. 如果遇到困难, **推荐使用ASCII终端模式**:
+
+```bash
+# 使用ASCII模式, 无需X Server配置
+uv run python -m genui --ui-mode ascii "创建一个登录界面"
+```
+
+如果需要使用GUI模式, 可以配置 X Server:
 
 1. **Windows 11 (推荐)**: 使用内置 WSLg
 ```bash
@@ -155,12 +164,19 @@ uv run python -m genui
 
 # 或者通过参数传入描述
 uv run python -m genui "创建一个登录界面, 包含用户名和密码输入框, 以及登录按钮"
+
+# 使用ASCII终端模式 (适合WSL2或无GUI环境)
+uv run python -m genui --ui-mode ascii "创建一个简单的计算器"
+
+# 使用Tkinter图形界面模式 (默认)
+uv run python -m genui --ui-mode tkinter "创建一个注册表单"
 ```
 
 ### 方式2: 作为库使用
 
 ```python
 from genui import UIGenerator, Renderer
+from genui.adapters import TkinterAdapter, ASCIIAdapter
 
 # 创建生成器
 generator = UIGenerator()
@@ -169,8 +185,12 @@ generator = UIGenerator()
 description = "创建一个简单的计算器, 包含两个输入框, 一个下拉框选择运算符, 一个计算按钮"
 ui_instance = generator.generate(description)
 
-# 渲染并显示UI
-renderer = Renderer()
+# 方式A: 使用Tkinter图形界面渲染
+renderer = Renderer(adapter=TkinterAdapter())
+renderer.render(ui_instance)
+
+# 方式B: 使用ASCII终端界面渲染
+renderer = Renderer(adapter=ASCIIAdapter())
 renderer.render(ui_instance)
 ```
 
@@ -204,6 +224,7 @@ genui 采用三层架构:
 │   UI组件抽象层 (Core + Adapters)    │
 │  - 抽象组件定义                     │
 │  - Tkinter适配器                    │
+│  - ASCII适配器 (Rich库)             │
 └─────────────────────────────────────┘
 ```
 
@@ -223,7 +244,8 @@ genui 采用三层架构:
 
 - 将不同框架的UI组件抽象为统一接口
 - 通过适配器模式支持多种UI框架
-- 当前支持Tkinter, 未来可扩展PyQt等
+- 当前支持Tkinter (图形界面) 和 ASCII/Rich (终端界面)
+- 未来可扩展PyQt等其他框架
 
 ## 可用组件
 
@@ -316,9 +338,9 @@ genui 通过OpenAI兼容接口支持多种大模型服务:
 ## 限制
 
 - 这是一个探索性项目, 主要用于验证概念
-- 当前只支持Tkinter框架
 - 生成的事件处理函数功能有限
 - 需要网络连接调用大模型API
+- ASCII模式下交互方式为顺序输入, 无法实现实时响应
 
 ## 未来计划
 
@@ -344,9 +366,32 @@ A: 编辑 `.env` 文件, 修改 `LLM_PROVIDER`, `OPENAI_BASE_URL` 和 `OPENAI_MO
 
 A: 当前不支持, 但只要本地模型提供OpenAI兼容接口(如Ollama), 理论上可以通过配置 `OPENAI_BASE_URL` 使用.
 
+### Q: ASCII模式和Tkinter模式有什么区别?
+
+**A**: 两种模式的区别:
+
+- **Tkinter模式** (默认): 图形界面, 所有组件同时显示, 支持实时交互
+- **ASCII模式**: 终端界面, 使用Rich库渲染, 交互方式为顺序输入
+
+ASCII模式的优点:
+- 无需X Server, 适合WSL2/SSH/无GUI环境
+- 轻量级, 启动快速
+- 彩色终端输出, 美观易读
+
+使用场景:
+- WSL2环境推荐使用ASCII模式
+- 服务器/SSH环境使用ASCII模式
+- 本地开发可使用Tkinter图形界面
+
 ### Q: WSL2 中运行出现 XCB 错误?
 
-**A**: 这是因为 WSL2 需要 X Server 支持 GUI:
+**A**: WSL2 需要 X Server 支持 GUI. **推荐使用ASCII终端模式来避免此问题**:
+
+```bash
+uv run python -m genui --ui-mode ascii "你的描述"
+```
+
+如果确实需要GUI模式:
 
 1. **Windows 11**: 使用 WSLg (内置)
    ```bash
