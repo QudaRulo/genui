@@ -5,6 +5,7 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 import colorlog
 
 
@@ -69,7 +70,36 @@ def setup_logger(
     return logger
 
 
-# 创建默认logger
+def setup_logger_with_date_file(
+    name: str = "genui",
+    level: int = logging.INFO,
+    log_dir: str = "logs"
+) -> logging.Logger:
+    """配置logger并自动创建按日期命名的日志文件
+
+    每次调用都会创建新的日志文件, 文件名格式为: YYYY-MM-DDTHH-MM-SS.log
+
+    Args:
+        name: logger名称
+        level: 日志级别
+        log_dir: 日志目录, 默认为"logs"
+
+    Returns:
+        配置好的logger实例
+    """
+    # 创建日志目录
+    log_path = Path(log_dir)
+    log_path.mkdir(parents=True, exist_ok=True)
+
+    # 生成日志文件名 (使用isoformat但替换冒号为短横线, Windows不允许文件名包含冒号)
+    timestamp = datetime.now().isoformat().replace(':', '-').replace('.', '-')
+    log_file = log_path / f"{timestamp}.log"
+
+    # 使用setup_logger创建logger
+    return setup_logger(name=name, level=level, log_file=str(log_file))
+
+
+# 创建默认logger (不自动创建文件)
 default_logger = setup_logger()
 
 
@@ -83,3 +113,24 @@ def get_logger(name: str = "genui") -> logging.Logger:
         logger实例
     """
     return logging.getLogger(name)
+
+
+def get_logger_with_date_file(
+    name: str = "genui",
+    level: int = logging.INFO,
+    log_dir: str = "logs"
+) -> logging.Logger:
+    """获取带日期文件的logger实例
+
+    便捷函数, 等同于setup_logger_with_date_file
+
+    Args:
+        name: logger名称
+        level: 日志级别
+        log_dir: 日志目录
+
+    Returns:
+        配置好的logger实例
+    """
+    return setup_logger_with_date_file(name=name, level=level, log_dir=log_dir)
+

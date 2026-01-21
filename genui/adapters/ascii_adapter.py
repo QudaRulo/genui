@@ -205,14 +205,36 @@ class ASCIIAdapter(AdapterBase):
             编译后的函数字典
         """
         handlers = {}
+
+        # 创建工具函数
+        def display(message: str) -> None:
+            """显示消息到控制台"""
+            self.console.print(message)
+
+        def get_value(component_id: str) -> Any:
+            """根据组件ID获取值"""
+            return self.component_values.get(component_id)
+
+        # 创建全局执行环境, 提供必要的工具函数
+        global_env = {
+            "__builtins__": __builtins__,
+            "display": display,
+            "get_value": get_value,
+            "print": print,
+        }
+
         for name, code in handler_codes.items():
+            # 创建局部执行环境
             local_env = {}
             try:
-                exec(code, {"__builtins__": __builtins__}, local_env)
+                # 执行函数定义代码
+                exec(code, global_env, local_env)
+                # 提取函数
                 if name in local_env:
                     handlers[name] = local_env[name]
             except Exception as e:
                 self.console.print(f"[red]编译处理函数 {name} 失败: {e}[/red]")
+                self.console.print(f"[red]代码内容:\n{code}[/red]")
 
         return handlers
 

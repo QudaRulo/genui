@@ -16,6 +16,7 @@ from genui.core.component import (
 )
 from genui.core.ui_instance import UIInstance
 from genui.adapters.base import AdapterBase
+from genui.logger import get_logger_with_date_file
 
 
 class TkinterAdapter(AdapterBase):
@@ -24,6 +25,8 @@ class TkinterAdapter(AdapterBase):
     def __init__(self):
         """初始化适配器"""
         self.component_widgets: Dict[str, Any] = {}  # 组件ID到widget的映射
+        self.logger = get_logger_with_date_file("genui.tkinter")
+        self.logger.info("TkinterAdapter初始化完成")
 
     def render_component(
         self,
@@ -272,18 +275,47 @@ class TkinterAdapter(AdapterBase):
             编译后的函数字典
         """
         handlers = {}
+
+        # 创建工具函数
+        def display(message: str) -> None:
+            """显示消息到控制台"""
+            print(message)
+            self.logger.info(f"display: {message}")
+
+        def get_widget(component_id: str) -> Optional[Any]:
+            """根据组件ID获取widget"""
+            return self.get_widget_by_id(component_id)
+
+        # 创建全局执行环境, 提供必要的工具函数
+        global_env = {
+            "__builtins__": __builtins__,
+            "display": display,
+            "get_widget": get_widget,
+            "print": print,
+        }
+
+        self.logger.info(f"开始编译 {len(handler_codes)} 个事件处理函数")
+
         for name, code in handler_codes.items():
-            # 创建安全的执行环境
+            # 创建局部执行环境
             local_env = {}
             try:
                 # 执行函数定义代码
-                exec(code, {"__builtins__": __builtins__}, local_env)
+                exec(code, global_env, local_env)
                 # 提取函数
                 if name in local_env:
                     handlers[name] = local_env[name]
+                    self.logger.info(f"成功编译处理函数: {name}")
+                else:
+                    self.logger.warning(f"处理函数 {name} 未在代码中定义")
             except Exception as e:
-                print(f"编译处理函数 {name} 失败: {e}")
+                error_msg = f"编译处理函数 {name} 失败: {e}"
+                print(error_msg)
+                print(f"代码内容:\n{code}")
+                self.logger.error(error_msg)
+                self.logger.error(f"失败的代码:\n{code}")
 
+        self.logger.info(f"编译完成, 成功: {len(handlers)}/{len(handler_codes)}")
         return handlers
 
     def run_event_loop(self, window: tk.Tk) -> None:
