@@ -3,6 +3,7 @@
 
 from typing import List
 from langchain_core.tools import BaseTool
+from genui.tools.builtin.calculator import calculate, convert_unit
 
 
 def get_all_builtin_tools() -> List[BaseTool]:
@@ -11,5 +12,7 @@ def get_all_builtin_tools() -> List[BaseTool]:
     Returns:
         内置 tools 列表
     """
-    # 暂时返回空列表, 后续任务中实现
-    return []
+    return [
+        calculate,
+        convert_unit,
+    ]

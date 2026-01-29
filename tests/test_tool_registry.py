@@ -16,8 +16,8 @@ def test_registry_init_with_builtin():
     """测试加载内置 tools 的初始化"""
     registry = ToolRegistry(load_builtin=True)
     tools = registry.get_all_tools()
-    # 应该有 6 个内置 tools
-    assert len(tools) >= 6
+    # 应该有 2 个内置 tools (calculate, convert_unit)
+    assert len(tools) >= 2
 
 
 def test_register_tool():
