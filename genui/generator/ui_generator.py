@@ -42,6 +42,8 @@ class UIGenerator:
 
 **重要**: 生成的UI必须具备完整的交互功能, 不能只是展示界面!
 
+{tools_section}
+
 你可以使用以下UI组件, **每个组件只能使用其专属的属性, 不能使用其他组件的属性**:
 
 1. **Container** (容器组件, 用于包含其他组件)
@@ -362,46 +364,28 @@ def handle_calculate():
         self.tool_registry = tool_registry or ToolRegistry()
 
     def generate(self, user_description: str) -> UIInstance:
-        """根据用户描述生成UI实例
+        """两阶段生成 UI
 
         Args:
-            user_description: 用户对UI的描述
+            user_description: 用户对 UI 的描述
 
         Returns:
-            生成的UI实例
+            生成的 UI 实例
 
         Raises:
             ValueError: 如果生成的配置无效
             RuntimeError: 如果LLM调用失败
         """
-        # 调用LLM生成配置
-        response = self.llm_client.generate_ui_config_sync(
-            user_description=user_description,
-            system_prompt=self.SYSTEM_PROMPT
-        )
+        logger.info(f"开始两阶段 UI 生成, 用户描述: {user_description[:50]}...")
 
-        # 提取JSON内容
-        json_str = self._extract_json(response)
+        # 阶段1: Tool 规划
+        selected_tools = self._plan_tools(user_description)
 
-        # 解析JSON
-        try:
-            config_dict = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"无法解析LLM返回的JSON: {e}\n内容: {json_str}")
+        # 阶段2: UI 生成
+        ui_instance = self._generate_ui(user_description, selected_tools)
 
-        # 转换为UIInstance
-        try:
-            ui_instance = UIInstance.model_validate(config_dict)
-            return ui_instance
-        except Exception as e:
-            # 提供更友好的错误信息
-            error_msg = f"生成的UI配置无效:\n{e}\n\n"
-            error_msg += "常见问题:\n"
-            error_msg += "1. Dropdown/Button/Label等组件不能有children/layout/padding/spacing属性\n"
-            error_msg += "2. 只有Container组件才能包含children\n"
-            error_msg += "3. 检查组件的type字段是否正确\n\n"
-            error_msg += f"生成的配置:\n{json.dumps(config_dict, indent=2, ensure_ascii=False)}"
-            raise ValueError(error_msg)
+        logger.info("UI 生成完成")
+        return ui_instance
 
     def _extract_json(self, text: str) -> str:
         """从文本中提取JSON内容
@@ -472,3 +456,94 @@ def handle_calculate():
         except Exception as e:
             logger.warning(f"Tool 规划失败, 使用空列表: {e}")
             return []
+
+    def _build_tools_section(self, selected_tools: List[str]) -> str:
+        """构建 tools 部分的 prompt
+
+        Args:
+            selected_tools: 选中的 tool 名称列表
+
+        Returns:
+            Tools 部分的 prompt 文本
+        """
+        if not selected_tools:
+            return ""
+
+        tools_desc = self.tool_registry.get_tools_description(selected_tools)
+
+        return f"""你可以调用以下功能函数:
+
+{tools_desc}
+
+在事件处理函数中, 可以使用 call_function(name, **kwargs) 来调用这些功能:
+
+示例:
+```python
+def handle_weather_query():
+    # 获取用户输入
+    city = get_value("city_input")
+
+    # 调用功能函数
+    weather_data = call_function("get_weather", city=city)
+
+    # 更新 UI 显示
+    result_text = f"{{city}}的天气: {{weather_data['weather']}}, 温度: {{weather_data['temperature']}}°C"
+    set_value("result_label", result_text)
+    display(f"查询成功: {{result_text}}")
+```
+
+call_function() 说明:
+- 参数: name (函数名), **kwargs (函数参数)
+- 返回: 函数执行结果
+- 异常: 如果函数不存在或执行失败, 会抛出异常, 可以用 try/except 捕获
+
+"""
+
+    def _generate_ui(
+        self,
+        user_description: str,
+        selected_tools: List[str]
+    ) -> UIInstance:
+        """阶段2: 基于筛选后的 tools 生成 UI
+
+        Args:
+            user_description: 用户描述
+            selected_tools: 筛选后的 tool 名称列表
+
+        Returns:
+            UI 实例
+        """
+        logger.info(f"开始生成 UI, 可用 tools: {len(selected_tools)} 个")
+
+        # 1. 构建 tools section
+        tools_section = self._build_tools_section(selected_tools)
+
+        # 2. 构建完整的 system prompt
+        system_prompt = self.SYSTEM_PROMPT.format(tools_section=tools_section)
+
+        # 3. 调用 LLM 生成 UI 配置
+        response = self.llm_client.generate_ui_config_sync(
+            user_description=user_description,
+            system_prompt=system_prompt
+        )
+
+        # 4. 解析 JSON
+        json_str = self._extract_json(response)
+
+        try:
+            config_dict = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"无法解析LLM返回的JSON: {e}\n内容: {json_str}")
+
+        # 5. 转换为UIInstance
+        try:
+            ui_instance = UIInstance.model_validate(config_dict)
+            return ui_instance
+        except Exception as e:
+            error_msg = f"生成的UI配置无效:\n{e}\n\n"
+            error_msg += "常见问题:\n"
+            error_msg += "1. Dropdown/Button/Label等组件不能有children/layout/padding/spacing属性\n"
+            error_msg += "2. 只有Container组件才能包含children\n"
+            error_msg += "3. 检查组件的type字段是否正确\n\n"
+            error_msg += f"生成的配置:\n{json.dumps(config_dict, indent=2, ensure_ascii=False)}"
+            raise ValueError(error_msg)
