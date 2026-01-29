@@ -189,9 +189,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "colorlog", specifier = ">=6.8.0" },
-    { name = "langchain-anthropic", marker = "extra == 'anthropic'", specifier = ">=0.3.0" },
-    { name = "langchain-core", specifier = ">=0.3.0" },
-    { name = "langchain-openai", specifier = ">=0.2.0" },
+    { name = "langchain-anthropic", marker = "extra == 'anthropic'", specifier = ">=0.3.0,<2.0.0" },
+    { name = "langchain-core", specifier = ">=0.3.0,<2.0.0" },
+    { name = "langchain-openai", specifier = ">=1.0.0,<2.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
