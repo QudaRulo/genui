@@ -3,9 +3,35 @@
 
 import json
 import re
-from typing import Optional
+from typing import Optional, List
 from genui.core.ui_instance import UIInstance
 from genui.generator.llm_client import LLMClient
+from genui.tools.registry import ToolRegistry
+from genui.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+# Tool 规划 Prompt
+TOOL_PLANNING_PROMPT = """你是一个 UI 功能规划助手.
+
+分析用户需求, 从以下可用工具中选择需要使用的工具:
+
+{tools_description}
+
+用户需求: {user_description}
+
+输出 JSON 格式:
+{{
+  "selected_tools": ["tool_name1", "tool_name2"],
+  "reasoning": "选择这些工具的原因"
+}}
+
+规则:
+1. 只选择真正需要的工具, 不要选择不相关的
+2. 如果用户需求不需要任何工具, selected_tools 为空列表
+3. 优先选择功能精确匹配的工具
+"""
 
 
 class UIGenerator:
@@ -321,13 +347,19 @@ def handle_calculate():
 - 只输出JSON, 不要有其他文字
 """
 
-    def __init__(self, llm_client: Optional[LLMClient] = None):
+    def __init__(
+        self,
+        llm_client: Optional[LLMClient] = None,
+        tool_registry: Optional[ToolRegistry] = None
+    ):
         """初始化UI生成器
 
         Args:
             llm_client: LLM客户端实例, 如果为None则创建新实例
+            tool_registry: Tool 注册表, 如果为 None 则创建默认实例 (包含内置 tools)
         """
         self.llm_client = llm_client or LLMClient()
+        self.tool_registry = tool_registry or ToolRegistry()
 
     def generate(self, user_description: str) -> UIInstance:
         """根据用户描述生成UI实例
@@ -398,3 +430,45 @@ def handle_calculate():
             return text[start:end + 1]
 
         return text
+
+    def _plan_tools(self, user_description: str) -> List[str]:
+        """阶段1: 分析用户需求, 规划需要使用的 tools
+
+        Args:
+            user_description: 用户描述
+
+        Returns:
+            选中的 tool 名称列表
+        """
+        # 1. 获取所有可用 tools 的描述
+        tools_description = self.tool_registry.get_tools_description()
+
+        # 2. 构建 Tool 规划 prompt
+        prompt = TOOL_PLANNING_PROMPT.format(
+            tools_description=tools_description,
+            user_description=user_description
+        )
+
+        # 3. 调用 LLM
+        response = self.llm_client.generate_ui_config_sync(
+            user_description="请分析并选择所需工具",  # 给一个非空的描述
+            system_prompt=prompt
+        )
+
+        # 4. 解析返回的 tool 列表
+        try:
+            # 提取 JSON
+            json_str = self._extract_json(response)
+            data = json.loads(json_str)
+            selected_tools = data.get("selected_tools", [])
+
+            logger.info(f"Tool 规划完成: 选中 {len(selected_tools)} 个 tools")
+            logger.info(f"选中的 tools: {selected_tools}")
+            if "reasoning" in data:
+                logger.debug(f"选择原因: {data['reasoning']}")
+
+            return selected_tools
+
+        except Exception as e:
+            logger.warning(f"Tool 规划失败, 使用空列表: {e}")
+            return []
