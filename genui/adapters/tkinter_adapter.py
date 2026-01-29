@@ -245,11 +245,16 @@ class TkinterAdapter(AdapterBase):
 
         return dropdown
 
-    def create_window(self, ui_instance: UIInstance) -> tk.Tk:
+    def create_window(
+        self,
+        ui_instance: UIInstance,
+        tool_executor: Optional[Any] = None
+    ) -> tk.Tk:
         """创建主窗口
 
         Args:
             ui_instance: UI实例
+            tool_executor: Tool 执行器 (可选)
 
         Returns:
             Tkinter窗口对象
@@ -258,8 +263,11 @@ class TkinterAdapter(AdapterBase):
         window.title(ui_instance.title)
         window.geometry(f"{ui_instance.width}x{ui_instance.height}")
 
-        # 编译事件处理函数
-        event_handlers = self._compile_handlers(ui_instance.event_handlers)
+        # 编译事件处理函数, 传递tool_executor
+        event_handlers = self._compile_handlers(
+            ui_instance.event_handlers,
+            tool_executor
+        )
 
         # 渲染根组件
         root_widget = self.render_component(
@@ -273,12 +281,14 @@ class TkinterAdapter(AdapterBase):
 
     def _compile_handlers(
         self,
-        handler_codes: Dict[str, str]
+        handler_codes: Dict[str, str],
+        tool_executor: Optional[Any] = None
     ) -> Dict[str, Callable]:
         """编译事件处理函数代码
 
         Args:
             handler_codes: 处理函数代码字典
+            tool_executor: Tool 执行器 (可选)
 
         Returns:
             编译后的函数字典
@@ -373,6 +383,10 @@ class TkinterAdapter(AdapterBase):
             "len": len,
             "range": range,
         }
+
+        # 如果提供了 tool_executor, 注入 call_function
+        if tool_executor:
+            global_env["call_function"] = tool_executor.call_function
 
         self.logger.info(f"开始编译 {len(handler_codes)} 个事件处理函数")
 
