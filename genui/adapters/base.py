@@ -30,11 +30,16 @@ class AdapterBase(ABC):
         pass
 
     @abstractmethod
-    def create_window(self, ui_instance: UIInstance) -> Any:
+    def create_window(
+        self,
+        ui_instance: UIInstance,
+        tool_executor: Any = None
+    ) -> Any:
         """创建主窗口
 
         Args:
             ui_instance: UI实例
+            tool_executor: Tool 执行器 (可选)
 
         Returns:
             窗口对象

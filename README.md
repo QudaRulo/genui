@@ -200,6 +200,78 @@ renderer.render(ui_instance)
 uv run python examples/demo.py
 ```
 
+## v0.3 新特性: Tools 集成
+
+v0.3 版本引入了功能调用能力, 让生成的 UI 不仅能展示和交互, 还能调用真实的功能.
+
+### 特性
+
+- **两阶段生成**: LLM 先规划需要的 tools, 再生成 UI
+- **内置 Tools**: 6 个示例 tools (计算, 单位转换, 天气查询, 时间查询, 文件操作)
+- **可扩展**: 支持用户自定义 tools
+- **基于 LangChain**: 统一的 tools 抽象
+
+### 示例
+
+#### 天气查询 UI
+
+```python
+from genui import UIGenerator, Renderer
+
+generator = UIGenerator()
+ui = generator.generate("创建一个天气查询界面")
+renderer = Renderer()
+renderer.render(ui)
+```
+
+生成的 UI 会自动:
+1. 识别需要使用 `get_weather` tool
+2. 生成包含输入框和按钮的界面
+3. 在点击按钮时调用 `get_weather` tool 并显示结果
+
+#### 增强计算器
+
+```python
+description = """创建一个增强计算器:
+- 支持数学表达式计算
+- 支持单位转换 (长度、温度)
+"""
+
+ui = generator.generate(description)
+renderer.render(ui)
+```
+
+### 内置 Tools
+
+| Tool | 功能 | 参数 |
+|------|------|------|
+| `calculate` | 计算数学表达式 | `expression: str` |
+| `convert_unit` | 单位转换 | `value: float, from_unit: str, to_unit: str` |
+| `get_weather` | 获取城市天气 (mock) | `city: str` |
+| `get_current_time` | 获取当前时间 | `timezone: str` (可选) |
+| `read_text_file` | 读取文本文件 | `file_path: str` |
+| `list_directory` | 列出目录内容 | `dir_path: str` |
+
+### 自定义 Tools
+
+```python
+from langchain.tools import tool
+from genui import UIGenerator, ToolRegistry
+
+@tool
+def my_custom_tool(param: str) -> str:
+    """我的自定义工具"""
+    return f"处理: {param}"
+
+# 注册自定义 tool
+registry = ToolRegistry(load_builtin=True)
+registry.register(my_custom_tool)
+
+# 使用自定义 tool
+generator = UIGenerator(tool_registry=registry)
+ui = generator.generate("创建一个使用我的自定义工具的界面")
+```
+
 ## 架构设计
 
 genui 采用三层架构:
