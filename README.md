@@ -8,6 +8,8 @@ genui 是一个探索性项目, 使用大模型根据用户描述动态生成可
 
 ## 特性
 
+- 🎁 **v0.4 新增**: Wheel打包、CLI工具、`@register_tool`装饰器、Headless测试
+- 🔧 **v0.3 新增**: Tools集成、两阶段生成、内置工具、LangChain支持
 - 🤖 **AI驱动**: 使用大模型理解用户需求并生成UI配置
 - 🌐 **多API支持**: 优先支持OpenAI兼容API, 兼容国内各大模型服务商(DeepSeek, 通义千问, GLM等)
 - 🔄 **灵活切换**: 支持OpenAI和Anthropic两种API, 可自由切换
@@ -20,12 +22,24 @@ genui 是一个探索性项目, 使用大模型根据用户描述动态生成可
 
 ## 安装
 
-### 前提条件
+### 方式1: 从 wheel 文件安装（v0.4+）
+
+```bash
+# 基础安装
+pip install genui-0.4.0-py3-none-any.whl
+
+# 安装 Anthropic 支持
+pip install genui-0.4.0-py3-none-any.whl[anthropic]
+```
+
+### 方式2: 从源码安装（开发模式）
+
+#### 前提条件
 
 - Python >= 3.11
 - uv (Python包管理器)
 
-### 安装步骤
+#### 安装步骤
 
 1. 克隆仓库:
 ```bash
@@ -156,7 +170,21 @@ ANTHROPIC_MODEL=claude-3-5-sonnet-20241022  # 可选
 
 ## 快速开始
 
-### 方式1: 使用命令行
+### 方式1: 使用 CLI 工具（v0.4+）
+
+```bash
+# 交互模式
+genui
+
+# 指定适配器
+genui --adapter ascii
+genui --adapter tkinter
+
+# 查看帮助
+genui --help
+```
+
+### 方式2: 使用命令行（开发模式）
 
 ```bash
 # 直接运行, 然后输入UI描述
@@ -172,7 +200,7 @@ uv run python -m genui --ui-mode ascii "创建一个简单的计算器"
 uv run python -m genui --ui-mode tkinter "创建一个注册表单"
 ```
 
-### 方式2: 作为库使用
+### 方式3: 作为库使用
 
 ```python
 from genui import UIGenerator, Renderer
@@ -194,11 +222,62 @@ renderer = Renderer(adapter=ASCIIAdapter())
 renderer.render(ui_instance)
 ```
 
-### 方式3: 运行示例
+### 方式4: 运行示例
 
 ```bash
 uv run python examples/demo.py
 ```
+
+## v0.4 新特性: 包发布版本
+
+v0.4 版本专注于打造可发布的基本版本, 提供完整的 API 和工具支持.
+
+### 主要特性
+
+- 🎁 **Wheel 打包**: 生成标准 wheel 文件, 可手动安装到其他项目
+- 🚀 **CLI 工具**: 提供 `genui` 命令行工具, 支持交互式UI生成
+- 🔧 **装饰器支持**: 新增 `@register_tool` 装饰器, 简化自定义工具注册
+- 🧪 **Headless 测试**: TestAdapter 支持自动化测试, 无需手动交互
+- 📚 **完整文档**: 快速开始指南、API文档、自定义工具和适配器指南
+
+### 安装使用
+
+**从 wheel 文件安装:**
+
+```bash
+pip install genui-0.4.0-py3-none-any.whl
+```
+
+**使用 CLI:**
+
+```bash
+# 交互模式
+genui
+
+# 指定适配器
+genui --adapter ascii
+```
+
+**使用 API:**
+
+```python
+from genui import UIGenerator, Renderer, ToolRegistry, register_tool
+
+# 自定义工具（装饰器方式）
+registry = ToolRegistry()
+
+@register_tool(registry)
+def my_tool(param: str) -> str:
+    """我的自定义工具"""
+    return f"处理: {param}"
+
+# 生成和渲染
+generator = UIGenerator(tool_registry=registry)
+ui = generator.generate("创建一个调用 my_tool 的界面")
+Renderer().render(ui)
+```
+
+详细文档: [快速开始指南](docs/guides/quick-start.md)
 
 ## v0.3 新特性: Tools 集成
 
