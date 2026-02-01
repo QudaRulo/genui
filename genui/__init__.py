@@ -15,9 +15,10 @@ from genui.core import (
 )
 from genui.generator import LLMClient, UIGenerator
 from genui.renderer import Renderer
-from genui.adapters import AdapterBase, TkinterAdapter
+from genui.adapters import AdapterBase, TkinterAdapter, ASCIIAdapter, TestAdapter
+from genui.tools import ToolRegistry, ToolExecutor, register_tool
 
-__version__ = "0.1.0"
+__version__ = "0.4.0"
 
 __all__ = [
     # Core
@@ -39,4 +40,10 @@ __all__ = [
     # Adapters
     "AdapterBase",
     "TkinterAdapter",
+    "ASCIIAdapter",
+    "TestAdapter",
+    # Tools
+    "ToolRegistry",
+    "ToolExecutor",
+    "register_tool",
 ]
