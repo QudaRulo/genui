@@ -52,6 +52,10 @@ Thumbs.db
 
 logs/*
 
+# Node.js
+node_modules/
+dist/
+
 # Git worktrees
 .worktrees/
 .claude
